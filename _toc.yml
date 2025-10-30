@@ -3,5 +3,7 @@
 format: jb-book
 root: README
 chapters:
+- file: chapters/neural_networks_from_scratch
+  title: Neural Networks from Scratch
 - file: chapters/template_chapter
   title: Template Chapter
