@@ -6,7 +6,7 @@ logo: ""
 
 # Information about where the book exists on the web
 repository:
-  url: https://github.com/yourusername/chapter2code
+  url: https://github.com/Prasoon1207/chapter2code
   path_to_book: chapters
   branch: main
 
@@ -33,6 +33,6 @@ sphinx:
   config:
     html_theme: sphinx_book_theme
     html_theme_options:
-      repository_url: https://github.com/yourusername/chapter2code
+      repository_url: https://github.com/Prasoon1207/chapter2code
       use_repository_button: true
       use_issues_button: true
