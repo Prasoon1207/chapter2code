@@ -1,6 +1,6 @@
 # Chapter2Code Research Blog
 
-A personal research blog where I annotate and implement key concepts from foundational books with code examples and explanations.
+A personal research blog where I annotate and implement key concepts from foundational books with code examples and explanations. This blog is automatically built and deployed using GitHub Pages.
 
 ## Project Structure
 
