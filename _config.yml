@@ -1,0 +1,38 @@
+# Book settings
+title: Chapter2Code Research Blog
+author: Your Name
+copyright: "2025"
+logo: ""
+
+# Information about where the book exists on the web
+repository:
+  url: https://github.com/yourusername/chapter2code
+  path_to_book: chapters
+  branch: main
+
+# Add GitHub buttons to your book
+html:
+  use_issues_button: true
+  use_repository_button: true
+  use_edit_page_button: true
+  google_analytics_id: ""  # Optional
+  home_page_in_navbar: true
+  baseurl: /chapter2code
+
+# Define the name of the latex output file for PDF builds
+latex:
+  latex_documents:
+    targetname: book.tex
+
+# Add a bibtex file so that we can create citations
+bibtex_bibfiles:
+  - references.bib
+
+# Add Sphinx theme and other settings
+sphinx:
+  config:
+    html_theme: sphinx_book_theme
+    html_theme_options:
+      repository_url: https://github.com/yourusername/chapter2code
+      use_repository_button: true
+      use_issues_button: true
