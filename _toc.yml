@@ -2,8 +2,14 @@
 # Learn more at https://jupyterbook.org/customize/toc.html
 format: jb-book
 root: README
-chapters:
-- file: chapters/neural_networks_from_scratch
-  title: Neural Networks from Scratch
-- file: chapters/template_chapter
-  title: Template Chapter
+
+parts:
+  - caption: Utilities
+    chapters:
+      - file: utilities/neural_network
+        title: Neural Network Implementation
+  
+  - caption: Chapters
+    chapters:
+      - file: chapters/template_chapter
+        title: Template Chapter
