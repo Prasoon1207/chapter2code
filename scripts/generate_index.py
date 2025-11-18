@@ -63,19 +63,19 @@ def generate_index_html(notebooks_info):
     <div class="container">
         <header>
             <h1>chapter2code</h1>
-            <p class="tagline">research notes on advanced ml topics</p>
+            <p class="tagline">research notes on ml topics</p>
         </header>
 
         <nav>
             <a href="#about">about</a>
             <a href="#notebooks">notebooks</a>
-            <a href="https://github.com/yourusername/chapter2code" target="_blank">github</a>
+            <a href="https://github.com/Prasoon1207/chapter2code" target="_blank">github</a>
         </nav>
 
         <section id="about">
             <h2>about</h2>
             <p>
-                executable jupyter notebooks for advanced machine learning concepts.
+                The purpose of this blog is to document my learning journey through some scientific topics I find interesting. Here, I share research notes, code implementations, and insights gained from studying various concepts in depth.
             </p>
         </section>
 
