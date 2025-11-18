@@ -27,16 +27,22 @@
             </header>
 
             <h1>Multi-Armed Bandits</h1>
+
 <p><strong>Chapter 1: Exploration vs Exploitation in Sequential Decision Making</strong></p>
+
 <p>The multi-armed bandit problem is a fundamental framework in reinforcement learning that captures the exploration-exploitation trade-off. Named after slot machines (one-armed bandits), it models scenarios where an agent must choose between multiple options with unknown reward distributions.</p>
 
             <h2>Problem Formulation</h2>
+
 <p>A $k$-armed bandit has $k$ possible actions (arms). Each arm $i$ has an unknown expected reward:</p>
+
 <p>$$q_*(a) = \mathbb{E}[R_t | A_t = a]$$</p>
+
 <p>At each timestep $t$, the agent:</p>
 <p>1. Selects an action $A_t$</p>
 <p>2. Receives reward $R_t$</p>
 <p>3. Updates estimates of action values</p>
+
 <p>The goal is to maximize cumulative reward over time.</p>
 
             <div class="code-block">
@@ -48,6 +54,7 @@ np.random.seed(42)</code></pre>
             </div>
 
             <h2>Bandit Environment</h2>
+
 <p>We'll create a simple $k$-armed bandit where each arm returns rewards from a Gaussian distribution:</p>
 
             <div class="code-block">
@@ -90,14 +97,21 @@ for i, mean in enumerate(bandit.true_means):
             </div>
 
             <h2>Action Value Estimation</h2>
+
 <p>We estimate the value of action $a$ using sample averaging:</p>
+
 <p>$$Q_t(a) = \frac{\sum_{i=1}^{t-1} R_i \cdot \mathbb{1}_{A_i=a}}{\sum_{i=1}^{t-1} \mathbb{1}_{A_i=a}}$$</p>
+
 <p>This can be computed incrementally:</p>
+
 <p>$$Q_{n+1} = Q_n + \frac{1}{n}[R_n - Q_n]$$</p>
 
             <h2>Strategy 1: Greedy</h2>
+
 <p>Always select the action with highest estimated value:</p>
+
 <p>$$A_t = \arg\max_a Q_t(a)$$</p>
+
 <p>This exploits current knowledge but never explores.</p>
 
             <div class="code-block">
@@ -119,11 +133,13 @@ for i, mean in enumerate(bandit.true_means):
             </div>
 
             <h2>Strategy 2: ε-Greedy</h2>
+
 <p>With probability $\varepsilon$, explore (random action); otherwise exploit (greedy action):</p>
-<p>$$A_t = \begin{cases}</p>
-<p>\text{random action} & \text{with probability } \varepsilon \\</p>
-<p>\arg\max_a Q_t(a) & \text{with probability } 1-\varepsilon</p>
-<p>\end{cases}$$</p>
+
+<p>$$A_t = \begin{cases}
+\text{random action} & \text{with probability } \varepsilon \\
+\arg\max_a Q_t(a) & \text{with probability } 1-\varepsilon
+\end{cases}$$</p>
 
             <div class="code-block">
                 <pre><code class="language-python">class EpsilonGreedyAgent:
@@ -148,8 +164,11 @@ for i, mean in enumerate(bandit.true_means):
             </div>
 
             <h2>Strategy 3: Upper Confidence Bound (UCB)</h2>
+
 <p>Select actions based on estimated value plus an uncertainty bonus:</p>
+
 <p>$$A_t = \arg\max_a \left[ Q_t(a) + c\sqrt{\frac{\ln t}{N_t(a)}} \right]$$</p>
+
 <p>The uncertainty term decreases as an action is selected more often, encouraging exploration of uncertain actions.</p>
 
             <div class="code-block">
@@ -181,9 +200,11 @@ for i, mean in enumerate(bandit.true_means):
             </div>
 
             <h2>Strategy 4: Thompson Sampling</h2>
+
 <p>Bayesian approach that maintains a probability distribution over action values. At each step:</p>
 <p>1. Sample a value from each arm's posterior distribution</p>
 <p>2. Select the arm with the highest sampled value</p>
+
 <p>For Gaussian rewards, we use a Gaussian posterior with known variance.</p>
 
             <div class="code-block">
@@ -223,6 +244,7 @@ for i, mean in enumerate(bandit.true_means):
             </div>
 
             <h2>Comparison Experiment</h2>
+
 <p>Let's compare all four strategies on the same bandit problem:</p>
 
             <div class="code-block">
@@ -309,10 +331,12 @@ for name in results:
             </div>
 
             <h2>Key Insights</h2>
+
 <p>1. <strong>Greedy fails</strong> — Gets stuck in suboptimal actions due to no exploration</p>
 <p>2. <strong>ε-greedy balances</strong> — Small ε (0.01) exploits more but may underexplore; larger ε (0.1) explores more</p>
 <p>3. <strong>UCB excels</strong> — Systematic exploration based on uncertainty, often outperforms fixed ε</p>
 <p>4. <strong>Thompson Sampling adapts</strong> — Bayesian approach naturally balances exploration/exploitation</p>
+
 <p>The optimal strategy depends on:</p>
 <ul>
 <li>Time horizon (finite vs infinite)</li>
@@ -322,19 +346,25 @@ for name in results:
 </ul>
 
             <h2>Extensions</h2>
+
 <p>- <strong>Non-stationary bandits</strong> — Reward distributions change over time</p>
 <p>- <strong>Contextual bandits</strong> — Actions depend on observed context</p>
 <p>- <strong>Restless bandits</strong> — Arm states evolve independently</p>
 <p>- <strong>Combinatorial bandits</strong> — Select multiple arms simultaneously</p>
+
 <p>Multi-armed bandits form the foundation for more complex RL algorithms like Q-learning and policy gradients.</p>
 
             <h2>Problem Formulation</h2>
+
 <p>A $k$-armed bandit has $k$ possible actions (arms). Each arm $i$ has an unknown expected reward:</p>
+
 <p>$$q_*(a) = \mathbb{E}[R_t | A_t = a]$$</p>
+
 <p>At each timestep $t$, the agent:</p>
 <p>1. Selects an action $A_t$</p>
 <p>2. Receives reward $R_t$</p>
 <p>3. Updates estimates of action values</p>
+
 <p>The goal is to maximize cumulative reward over time.</p>
 
             <div class="code-block">
@@ -345,6 +375,7 @@ np.random.seed(42)</code></pre>
             </div>
 
             <h2>Bandit Environment</h2>
+
 <p>We'll create a simple $k$-armed bandit where each arm returns rewards from a Gaussian distribution:</p>
 
             <div class="code-block">

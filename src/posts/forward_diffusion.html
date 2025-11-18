@@ -27,9 +27,13 @@
             </header>
 
             <h2>Mathematical Foundation</h2>
+
 <p>The forward diffusion process transforms data $x_0$ into increasingly noisy versions $x_1, x_2, ..., x_T$.</p>
+
 <p>At each timestep $t$, we add Gaussian noise according to:</p>
+
 <p>$$q(x_t | x_{t-1}) = \mathcal{N}(x_t; \sqrt{1-\beta_t}x_{t-1}, \beta_t I)$$</p>
+
 <p>where $\beta_t$ is a variance schedule that controls how much noise is added at each step.</p>
 
             <div class="code-block">
@@ -42,6 +46,7 @@ np.random.seed(42)</code></pre>
             </div>
 
             <h2>Variance Schedule</h2>
+
 <p>We define a linear schedule for $\beta_t$ from $\beta_1$ to $\beta_T$:</p>
 
             <div class="code-block">
@@ -73,8 +78,11 @@ print(f&quot;Alpha_bar at T: {alphas_cumprod[-1]:.6f}&quot;)</code></pre>
             </div>
 
             <h2>Closed-Form Forward Process</h2>
+
 <p>The elegant property of forward diffusion is that we can sample $x_t$ directly from $x_0$ without iterating through all timesteps:</p>
+
 <p>$$q(x_t | x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t}x_0, (1-\bar{\alpha}_t)I)$$</p>
+
 <p>where $\bar{\alpha}_t = \prod_{i=1}^{t} \alpha_i$</p>
 
             <div class="code-block">
@@ -103,6 +111,7 @@ print(f&quot;Alpha_bar at T: {alphas_cumprod[-1]:.6f}&quot;)</code></pre>
             </div>
 
             <h2>Visualization: 1D Signal</h2>
+
 <p>Let's visualize how a simple 1D signal degrades through the forward process:</p>
 
             <div class="code-block">
@@ -135,6 +144,7 @@ print(&quot;\nObservation: As t increases, the signal becomes pure noise.&quot;)
             </div>
 
             <h2>Visualization: 2D Image</h2>
+
 <p>Forward diffusion on a 2D pattern:</p>
 
             <div class="code-block">
@@ -169,13 +179,16 @@ plt.show()</code></pre>
             </div>
 
             <h2>Key Insights</h2>
+
 <p>1. <strong>Monotonic Information Loss</strong>: Each timestep irreversibly adds noise</p>
 <p>2. <strong>Closed-Form Sampling</strong>: We can jump to any timestep directly using $\bar{\alpha}_t$</p>
 <p>3. <strong>Endpoint Behavior</strong>: At $t=T$, $x_T \approx \mathcal{N}(0, I)$ (pure noise)</p>
 <p>4. <strong>Trainable Reverse</strong>: The reverse process learns to denoise, step by step</p>
+
 <p>This forward process is deterministic given the noise, making it possible to train a neural network to reverse it.</p>
 
             <h2>Next Steps</h2>
+
 <p>- <strong>Chapter 3</strong>: Reverse Diffusion and Denoising</p>
 <p>- <strong>Chapter 4</strong>: Training the U-Net Architecture</p>
 <p>- <strong>Chapter 5</strong>: Sampling Strategies (DDPM, DDIM)</p>

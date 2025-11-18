@@ -19,8 +19,36 @@ def convert_markdown_to_html(md_text):
     lines = md_text.split('\n')
     html_lines = []
     in_list = False
+    in_display_math = False
+    math_buffer = []
     
     for line in lines:
+        # Check for display math ($$...$$)
+        # Count $$ occurrences
+        dollar_count = line.count('$$')
+        
+        if dollar_count >= 2:
+            # Complete display math on one line
+            html_lines.append(f'<p>{line}</p>')
+            continue
+        elif dollar_count == 1:
+            if in_display_math:
+                # End of multi-line display math
+                math_buffer.append(line)
+                # Output the complete math block as-is
+                html_lines.append('<p>' + '\n'.join(math_buffer) + '</p>')
+                math_buffer = []
+                in_display_math = False
+            else:
+                # Start of multi-line display math
+                in_display_math = True
+                math_buffer = [line]
+            continue
+        
+        if in_display_math:
+            math_buffer.append(line)
+            continue
+        
         # Headers
         if line.startswith('# '):
             html_lines.append(f'<h1>{line[2:]}</h1>')
@@ -32,7 +60,11 @@ def convert_markdown_to_html(md_text):
         elif '**' in line:
             line = line.replace('**', '<strong>', 1).replace('**', '</strong>', 1)
             html_lines.append(f'<p>{line}</p>')
-        # Lists
+        # Lists (numbered)
+        elif line.strip() and line.strip()[0].isdigit() and '. ' in line:
+            # Simple numbered list detection
+            html_lines.append(f'<p>{line}</p>')
+        # Lists (bulleted)
         elif line.startswith('- '):
             if not in_list:
                 html_lines.append('<ul>')
@@ -44,6 +76,8 @@ def convert_markdown_to_html(md_text):
                 in_list = False
             if line.strip():
                 html_lines.append(f'<p>{line}</p>')
+            elif html_lines:  # preserve empty lines between paragraphs
+                html_lines.append('')
     
     if in_list:
         html_lines.append('</ul>')
