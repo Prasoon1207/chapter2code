@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi Armed Bandits · chapter2code</title>
+    <link rel="stylesheet" href="../styles/post-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="../index.html">chapter2code</a>
+            <span class="sep">/</span>
+            <span class="current">multi armed bandits</span>
+        </nav>
+
+        <article>
+            <header class="post-header">
+                <h1>Multi Armed Bandits</h1>
+                <div class="meta">november 2025</div>
+            </header>
+
+            <h1>Multi-Armed Bandits</h1>
+<p><strong>Chapter 1: Exploration vs Exploitation in Sequential Decision Making</strong></p>
+<p>The multi-armed bandit problem is a fundamental framework in reinforcement learning that captures the exploration-exploitation trade-off. Named after slot machines (one-armed bandits), it models scenarios where an agent must choose between multiple options with unknown reward distributions.</p>
+
+            <h2>Problem Formulation</h2>
+<p>A $k$-armed bandit has $k$ possible actions (arms). Each arm $i$ has an unknown expected reward:</p>
+<p>$$q_*(a) = \mathbb{E}[R_t | A_t = a]$$</p>
+<p>At each timestep $t$, the agent:</p>
+<p>1. Selects an action $A_t$</p>
+<p>2. Receives reward $R_t$</p>
+<p>3. Updates estimates of action values</p>
+<p>The goal is to maximize cumulative reward over time.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
+np.random.seed(42)</code></pre>
+            </div>
+
+            <h2>Bandit Environment</h2>
+<p>We'll create a simple $k$-armed bandit where each arm returns rewards from a Gaussian distribution:</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">class MultiArmedBandit:
+    &quot;&quot;&quot;
+    k-armed bandit with Gaussian reward distributions.
+    &quot;&quot;&quot;
+    def __init__(self, k=10, mean_range=(-2, 2), std=1.0):
+        &quot;&quot;&quot;
+        Args:
+            k: Number of arms
+            mean_range: Range for sampling true means
+            std: Standard deviation of reward noise
+        &quot;&quot;&quot;
+        self.k = k
+        self.std = std
+        
+        # True mean rewards for each arm (unknown to agent)
+        self.true_means = np.random.uniform(
+            mean_range[0], mean_range[1], size=k
+        )
+        self.optimal_arm = np.argmax(self.true_means)
+        self.optimal_value = self.true_means[self.optimal_arm]
+        
+    def pull(self, arm):
+        &quot;&quot;&quot;Pull an arm and receive a noisy reward.&quot;&quot;&quot;
+        return np.random.normal(self.true_means[arm], self.std)
+    
+    def get_regret(self, arm):
+        &quot;&quot;&quot;Calculate regret for choosing this arm.&quot;&quot;&quot;
+        return self.optimal_value - self.true_means[arm]
+
+# Create a 10-armed bandit
+bandit = MultiArmedBandit(k=10)
+
+print(&quot;True mean rewards:&quot;)
+for i, mean in enumerate(bandit.true_means):
+    marker = &quot; ← optimal&quot; if i == bandit.optimal_arm else &quot;&quot;
+    print(f&quot;  Arm {i}: {mean:.3f}{marker}&quot;)</code></pre>
+            </div>
+
+            <h2>Action Value Estimation</h2>
+<p>We estimate the value of action $a$ using sample averaging:</p>
+<p>$$Q_t(a) = \frac{\sum_{i=1}^{t-1} R_i \cdot \mathbb{1}_{A_i=a}}{\sum_{i=1}^{t-1} \mathbb{1}_{A_i=a}}$$</p>
+<p>This can be computed incrementally:</p>
+<p>$$Q_{n+1} = Q_n + \frac{1}{n}[R_n - Q_n]$$</p>
+
+            <h2>Strategy 1: Greedy</h2>
+<p>Always select the action with highest estimated value:</p>
+<p>$$A_t = \arg\max_a Q_t(a)$$</p>
+<p>This exploits current knowledge but never explores.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">class GreedyAgent:
+    &quot;&quot;&quot;Greedy action selection (pure exploitation).&quot;&quot;&quot;
+    def __init__(self, k, initial_value=0.0):
+        self.k = k
+        self.Q = np.full(k, initial_value)  # Estimated values
+        self.N = np.zeros(k)  # Action counts
+        
+    def select_action(self):
+        &quot;&quot;&quot;Select action with highest estimated value.&quot;&quot;&quot;
+        return np.argmax(self.Q)
+    
+    def update(self, action, reward):
+        &quot;&quot;&quot;Update estimates using sample averaging.&quot;&quot;&quot;
+        self.N[action] += 1
+        self.Q[action] += (reward - self.Q[action]) / self.N[action]</code></pre>
+            </div>
+
+            <h2>Strategy 2: ε-Greedy</h2>
+<p>With probability $\varepsilon$, explore (random action); otherwise exploit (greedy action):</p>
+<p>$$A_t = \begin{cases}</p>
+<p>\text{random action} & \text{with probability } \varepsilon \\</p>
+<p>\arg\max_a Q_t(a) & \text{with probability } 1-\varepsilon</p>
+<p>\end{cases}$$</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">class EpsilonGreedyAgent:
+    &quot;&quot;&quot;ε-greedy action selection.&quot;&quot;&quot;
+    def __init__(self, k, epsilon=0.1, initial_value=0.0):
+        self.k = k
+        self.epsilon = epsilon
+        self.Q = np.full(k, initial_value)
+        self.N = np.zeros(k)
+        
+    def select_action(self):
+        &quot;&quot;&quot;Select action using ε-greedy strategy.&quot;&quot;&quot;
+        if np.random.random() &lt; self.epsilon:
+            return np.random.randint(self.k)  # Explore
+        else:
+            return np.argmax(self.Q)  # Exploit
+    
+    def update(self, action, reward):
+        &quot;&quot;&quot;Update estimates.&quot;&quot;&quot;
+        self.N[action] += 1
+        self.Q[action] += (reward - self.Q[action]) / self.N[action]</code></pre>
+            </div>
+
+            <h2>Strategy 3: Upper Confidence Bound (UCB)</h2>
+<p>Select actions based on estimated value plus an uncertainty bonus:</p>
+<p>$$A_t = \arg\max_a \left[ Q_t(a) + c\sqrt{\frac{\ln t}{N_t(a)}} \right]$$</p>
+<p>The uncertainty term decreases as an action is selected more often, encouraging exploration of uncertain actions.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">class UCBAgent:
+    &quot;&quot;&quot;Upper Confidence Bound action selection.&quot;&quot;&quot;
+    def __init__(self, k, c=2.0, initial_value=0.0):
+        self.k = k
+        self.c = c
+        self.Q = np.full(k, initial_value)
+        self.N = np.zeros(k)
+        self.t = 0
+        
+    def select_action(self):
+        &quot;&quot;&quot;Select action using UCB.&quot;&quot;&quot;
+        self.t += 1
+        
+        # Try each action at least once
+        if np.min(self.N) == 0:
+            return np.argmin(self.N)
+        
+        # UCB formula
+        ucb_values = self.Q + self.c * np.sqrt(np.log(self.t) / self.N)
+        return np.argmax(ucb_values)
+    
+    def update(self, action, reward):
+        &quot;&quot;&quot;Update estimates.&quot;&quot;&quot;
+        self.N[action] += 1
+        self.Q[action] += (reward - self.Q[action]) / self.N[action]</code></pre>
+            </div>
+
+            <h2>Strategy 4: Thompson Sampling</h2>
+<p>Bayesian approach that maintains a probability distribution over action values. At each step:</p>
+<p>1. Sample a value from each arm's posterior distribution</p>
+<p>2. Select the arm with the highest sampled value</p>
+<p>For Gaussian rewards, we use a Gaussian posterior with known variance.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">class ThompsonSamplingAgent:
+    &quot;&quot;&quot;Thompson Sampling with Gaussian posterior.&quot;&quot;&quot;
+    def __init__(self, k, prior_mean=0.0, prior_std=1.0, reward_std=1.0):
+        self.k = k
+        self.reward_std = reward_std
+        
+        # Posterior parameters (mean and precision)
+        self.mu = np.full(k, prior_mean)
+        self.tau = np.full(k, 1.0 / (prior_std ** 2))  # Precision
+        self.N = np.zeros(k)
+        
+    def select_action(self):
+        &quot;&quot;&quot;Sample from posteriors and select best.&quot;&quot;&quot;
+        # Sample from each arm&#39;s posterior
+        samples = np.random.normal(
+            self.mu, 
+            1.0 / np.sqrt(self.tau)
+        )
+        return np.argmax(samples)
+    
+    def update(self, action, reward):
+        &quot;&quot;&quot;Update posterior using Bayesian update.&quot;&quot;&quot;
+        self.N[action] += 1
+        
+        # Bayesian update for Gaussian with known variance
+        reward_precision = 1.0 / (self.reward_std ** 2)
+        
+        new_tau = self.tau[action] + reward_precision
+        new_mu = (self.tau[action] * self.mu[action] + 
+                  reward_precision * reward) / new_tau
+        
+        self.mu[action] = new_mu
+        self.tau[action] = new_tau</code></pre>
+            </div>
+
+            <h2>Comparison Experiment</h2>
+<p>Let's compare all four strategies on the same bandit problem:</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">def run_experiment(agent, bandit, steps=1000):
+    &quot;&quot;&quot;Run bandit experiment and track performance.&quot;&quot;&quot;
+    rewards = np.zeros(steps)
+    optimal_actions = np.zeros(steps)
+    
+    for t in range(steps):
+        action = agent.select_action()
+        reward = bandit.pull(action)
+        agent.update(action, reward)
+        
+        rewards[t] = reward
+        optimal_actions[t] = (action == bandit.optimal_arm)
+    
+    return rewards, optimal_actions
+
+# Run multiple experiments and average
+num_runs = 200
+steps = 1000
+
+agents_config = [
+    (&quot;Greedy&quot;, lambda k: GreedyAgent(k)),
+    (&quot;ε-greedy (0.01)&quot;, lambda k: EpsilonGreedyAgent(k, epsilon=0.01)),
+    (&quot;ε-greedy (0.1)&quot;, lambda k: EpsilonGreedyAgent(k, epsilon=0.1)),
+    (&quot;UCB (c=2)&quot;, lambda k: UCBAgent(k, c=2.0)),
+    (&quot;Thompson Sampling&quot;, lambda k: ThompsonSamplingAgent(k))
+]
+
+results = {}
+
+for name, agent_factory in agents_config:
+    print(f&quot;Running {name}...&quot;)
+    all_rewards = np.zeros((num_runs, steps))
+    all_optimal = np.zeros((num_runs, steps))
+    
+    for run in range(num_runs):
+        bandit = MultiArmedBandit(k=10)
+        agent = agent_factory(10)
+        rewards, optimal = run_experiment(agent, bandit, steps)
+        all_rewards[run] = rewards
+        all_optimal[run] = optimal
+    
+    results[name] = {
+        &#39;rewards&#39;: np.mean(all_rewards, axis=0),
+        &#39;optimal&#39;: np.mean(all_optimal, axis=0)
+    }
+
+print(&quot;\nDone!&quot;)</code></pre>
+            </div>
+
+            <h2>Results Visualization</h2>
+
+            <div class="code-block">
+                <pre><code class="language-python">fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+# Average reward over time
+for name in results:
+    ax1.plot(results[name][&#39;rewards&#39;], label=name, linewidth=1.5)
+ax1.set_xlabel(&#39;Steps&#39;, fontsize=11)
+ax1.set_ylabel(&#39;Average Reward&#39;, fontsize=11)
+ax1.set_title(&#39;Average Reward vs Steps&#39;, fontsize=12)
+ax1.legend(fontsize=9)
+ax1.grid(True, alpha=0.3)
+
+# % Optimal action
+for name in results:
+    ax2.plot(results[name][&#39;optimal&#39;] * 100, label=name, linewidth=1.5)
+ax2.set_xlabel(&#39;Steps&#39;, fontsize=11)
+ax2.set_ylabel(&#39;% Optimal Action&#39;, fontsize=11)
+ax2.set_title(&#39;Optimal Action Selection vs Steps&#39;, fontsize=12)
+ax2.legend(fontsize=9)
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+print(&quot;\nFinal Performance (last 100 steps):&quot;)
+for name in results:
+    avg_reward = np.mean(results[name][&#39;rewards&#39;][-100:])
+    pct_optimal = np.mean(results[name][&#39;optimal&#39;][-100:]) * 100
+    print(f&quot;  {name:20s}: Reward={avg_reward:.3f}, Optimal={pct_optimal:.1f}%&quot;)</code></pre>
+            </div>
+
+            <h2>Key Insights</h2>
+<p>1. <strong>Greedy fails</strong> — Gets stuck in suboptimal actions due to no exploration</p>
+<p>2. <strong>ε-greedy balances</strong> — Small ε (0.01) exploits more but may underexplore; larger ε (0.1) explores more</p>
+<p>3. <strong>UCB excels</strong> — Systematic exploration based on uncertainty, often outperforms fixed ε</p>
+<p>4. <strong>Thompson Sampling adapts</strong> — Bayesian approach naturally balances exploration/exploitation</p>
+<p>The optimal strategy depends on:</p>
+<ul>
+<li>Time horizon (finite vs infinite)</li>
+<li>Reward variance</li>
+<li>Number of arms</li>
+<li>Non-stationarity of environment</li>
+</ul>
+
+            <h2>Extensions</h2>
+<p>- <strong>Non-stationary bandits</strong> — Reward distributions change over time</p>
+<p>- <strong>Contextual bandits</strong> — Actions depend on observed context</p>
+<p>- <strong>Restless bandits</strong> — Arm states evolve independently</p>
+<p>- <strong>Combinatorial bandits</strong> — Select multiple arms simultaneously</p>
+<p>Multi-armed bandits form the foundation for more complex RL algorithms like Q-learning and policy gradients.</p>
+
+            <h2>Problem Formulation</h2>
+<p>A $k$-armed bandit has $k$ possible actions (arms). Each arm $i$ has an unknown expected reward:</p>
+<p>$$q_*(a) = \mathbb{E}[R_t | A_t = a]$$</p>
+<p>At each timestep $t$, the agent:</p>
+<p>1. Selects an action $A_t$</p>
+<p>2. Receives reward $R_t$</p>
+<p>3. Updates estimates of action values</p>
+<p>The goal is to maximize cumulative reward over time.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(42)</code></pre>
+            </div>
+
+            <h2>Bandit Environment</h2>
+<p>We'll create a simple $k$-armed bandit where each arm returns rewards from a Gaussian distribution:</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">class MultiArmedBandit:
+    &quot;&quot;&quot;k-armed bandit with Gaussian reward distributions.&quot;&quot;&quot;
+    def __init__(self, k=10, mean_range=(-2, 2), std=1.0):
+        self.k = k
+        self.std = std
+        self.true_means = np.random.uniform(mean_range[0], mean_range[1], size=k)
+        self.optimal_arm = np.argmax(self.true_means)
+        self.optimal_value = self.true_means[self.optimal_arm]
+        
+    def pull(self, arm):
+        &quot;&quot;&quot;Pull an arm and receive a noisy reward.&quot;&quot;&quot;
+        return np.random.normal(self.true_means[arm], self.std)
+    
+    def get_regret(self, arm):
+        &quot;&quot;&quot;Calculate regret for choosing this arm.&quot;&quot;&quot;
+        return self.optimal_value - self.true_means[arm]
+
+# Create a 10-armed bandit
+bandit = MultiArmedBandit(k=10)
+print(&quot;True mean rewards:&quot;)
+for i, mean in enumerate(bandit.true_means):
+    marker = &quot; ← optimal&quot; if i == bandit.optimal_arm else &quot;&quot;
+    print(f&quot;  Arm {i}: {mean:.3f}{marker}&quot;)</code></pre>
+            </div>
+
+            <div class="post-footer">
+                <a href="../index.html">← back to posts</a>
+            </div>
+        </article>
+    </div>
+</body>
+</html>

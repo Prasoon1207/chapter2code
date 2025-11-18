@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forward Diffusion · chapter2code</title>
+    <link rel="stylesheet" href="../styles/post-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="../index.html">chapter2code</a>
+            <span class="sep">/</span>
+            <span class="current">forward diffusion</span>
+        </nav>
+
+        <article>
+            <header class="post-header">
+                <h1>Forward Diffusion</h1>
+                <div class="meta">november 2025</div>
+            </header>
+
+            <h2>Mathematical Foundation</h2>
+<p>The forward diffusion process transforms data $x_0$ into increasingly noisy versions $x_1, x_2, ..., x_T$.</p>
+<p>At each timestep $t$, we add Gaussian noise according to:</p>
+<p>$$q(x_t | x_{t-1}) = \mathcal{N}(x_t; \sqrt{1-\beta_t}x_{t-1}, \beta_t I)$$</p>
+<p>where $\beta_t$ is a variance schedule that controls how much noise is added at each step.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+
+# Set random seed for reproducibility
+np.random.seed(42)</code></pre>
+            </div>
+
+            <h2>Variance Schedule</h2>
+<p>We define a linear schedule for $\beta_t$ from $\beta_1$ to $\beta_T$:</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">def linear_beta_schedule(timesteps, beta_start=0.0001, beta_end=0.02):
+    &quot;&quot;&quot;
+    Linear schedule for variance parameter beta.
+    
+    Args:
+        timesteps: Number of diffusion steps
+        beta_start: Initial variance
+        beta_end: Final variance
+    
+    Returns:
+        Array of beta values
+    &quot;&quot;&quot;
+    return np.linspace(beta_start, beta_end, timesteps)
+
+# Define parameters
+T = 1000
+betas = linear_beta_schedule(T)
+
+# Pre-compute useful values
+alphas = 1.0 - betas
+alphas_cumprod = np.cumprod(alphas)
+
+print(f&quot;Number of timesteps: {T}&quot;)
+print(f&quot;Beta range: [{betas[0]:.6f}, {betas[-1]:.6f}]&quot;)
+print(f&quot;Alpha_bar at T: {alphas_cumprod[-1]:.6f}&quot;)</code></pre>
+            </div>
+
+            <h2>Closed-Form Forward Process</h2>
+<p>The elegant property of forward diffusion is that we can sample $x_t$ directly from $x_0$ without iterating through all timesteps:</p>
+<p>$$q(x_t | x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t}x_0, (1-\bar{\alpha}_t)I)$$</p>
+<p>where $\bar{\alpha}_t = \prod_{i=1}^{t} \alpha_i$</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">def forward_diffusion_sample(x_0, t, alphas_cumprod):
+    &quot;&quot;&quot;
+    Sample from q(x_t | x_0) using the closed-form solution.
+    
+    Args:
+        x_0: Original data
+        t: Timestep (0-indexed)
+        alphas_cumprod: Cumulative product of alphas
+    
+    Returns:
+        Noisy version of x_0 at timestep t
+    &quot;&quot;&quot;
+    sqrt_alpha_bar = np.sqrt(alphas_cumprod[t])
+    sqrt_one_minus_alpha_bar = np.sqrt(1 - alphas_cumprod[t])
+    
+    # Sample noise
+    noise = np.random.randn(*x_0.shape)
+    
+    # Apply forward diffusion formula
+    x_t = sqrt_alpha_bar * x_0 + sqrt_one_minus_alpha_bar * noise
+    
+    return x_t, noise</code></pre>
+            </div>
+
+            <h2>Visualization: 1D Signal</h2>
+<p>Let's visualize how a simple 1D signal degrades through the forward process:</p>
+
+            <div class="code-block">
+                <pre><code class="language-python"># Create a simple signal
+x = np.linspace(0, 4*np.pi, 200)
+signal = np.sin(x)
+
+# Sample at different timesteps
+timesteps_to_show = [0, 100, 300, 500, 700, 999]
+
+fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+axes = axes.flatten()
+
+for idx, t in enumerate(timesteps_to_show):
+    if t == 0:
+        noisy_signal = signal
+    else:
+        noisy_signal, _ = forward_diffusion_sample(signal, t-1, alphas_cumprod)
+    
+    axes[idx].plot(x, noisy_signal, linewidth=1)
+    axes[idx].set_title(f&#39;t = {t}&#39;, fontsize=12)
+    axes[idx].set_ylim(-3, 3)
+    axes[idx].grid(True, alpha=0.3)
+    
+plt.tight_layout()
+plt.suptitle(&#39;Forward Diffusion on 1D Signal&#39;, fontsize=14, y=1.02)
+plt.show()
+
+print(&quot;\nObservation: As t increases, the signal becomes pure noise.&quot;)</code></pre>
+            </div>
+
+            <h2>Visualization: 2D Image</h2>
+<p>Forward diffusion on a 2D pattern:</p>
+
+            <div class="code-block">
+                <pre><code class="language-python"># Create a simple 2D pattern
+size = 64
+x = np.linspace(-1, 1, size)
+y = np.linspace(-1, 1, size)
+X, Y = np.meshgrid(x, y)
+
+# Create concentric circles pattern
+pattern = np.sin(10 * np.sqrt(X**2 + Y**2))
+
+# Visualize forward diffusion
+timesteps_2d = [0, 100, 250, 500, 750, 999]
+
+fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+axes = axes.flatten()
+
+for idx, t in enumerate(timesteps_2d):
+    if t == 0:
+        noisy_pattern = pattern
+    else:
+        noisy_pattern, _ = forward_diffusion_sample(pattern, t-1, alphas_cumprod)
+    
+    im = axes[idx].imshow(noisy_pattern, cmap=&#39;RdBu_r&#39;, vmin=-3, vmax=3)
+    axes[idx].set_title(f&#39;t = {t}&#39;, fontsize=11)
+    axes[idx].axis(&#39;off&#39;)
+
+plt.tight_layout()
+plt.suptitle(&#39;Forward Diffusion on 2D Pattern&#39;, fontsize=14, y=1.00)
+plt.show()</code></pre>
+            </div>
+
+            <h2>Key Insights</h2>
+<p>1. <strong>Monotonic Information Loss</strong>: Each timestep irreversibly adds noise</p>
+<p>2. <strong>Closed-Form Sampling</strong>: We can jump to any timestep directly using $\bar{\alpha}_t$</p>
+<p>3. <strong>Endpoint Behavior</strong>: At $t=T$, $x_T \approx \mathcal{N}(0, I)$ (pure noise)</p>
+<p>4. <strong>Trainable Reverse</strong>: The reverse process learns to denoise, step by step</p>
+<p>This forward process is deterministic given the noise, making it possible to train a neural network to reverse it.</p>
+
+            <h2>Next Steps</h2>
+<p>- <strong>Chapter 3</strong>: Reverse Diffusion and Denoising</p>
+<p>- <strong>Chapter 4</strong>: Training the U-Net Architecture</p>
+<p>- <strong>Chapter 5</strong>: Sampling Strategies (DDPM, DDIM)</p>
+
+            <div class="post-footer">
+                <a href="../index.html">← back to posts</a>
+            </div>
+        </article>
+    </div>
+</body>
+</html>
