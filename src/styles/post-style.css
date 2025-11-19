@@ -156,6 +156,14 @@ p {
     padding: 12px 15px;
 }
 
+.output img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    border-radius: 3px;
+}
+
 .output-label {
     font-size: 9px;
     text-transform: uppercase;

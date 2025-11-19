@@ -145,17 +145,33 @@ def notebook_to_blog_post(notebook_path, output_path, title, meta):
             
             # Add output if present
             if 'outputs' in cell and cell['outputs']:
-                output_text = []
+                has_output = False
                 for output in cell['outputs']:
-                    if 'text' in output:
-                        output_text.extend(output['text'])
+                    # Handle image outputs (plots)
+                    if 'data' in output and 'image/png' in output['data']:
+                        has_output = True
+                        image_data = output['data']['image/png']
+                        html += f"""                <div class="output">
+                    <img src="data:image/png;base64,{image_data}" alt="Plot output" style="max-width: 100%; height: auto;">
+                </div>
+"""
+                    # Handle text outputs
+                    elif 'text' in output:
+                        has_output = True
+                        output_text = ''.join(output['text']).strip()
+                        escaped_output = escape_html(output_text)
+                        html += f"""                <div class="output">
+                    <div class="output-label">output:</div>
+                    <pre>{escaped_output}</pre>
+                </div>
+"""
                     elif 'data' in output and 'text/plain' in output['data']:
-                        output_text.extend(output['data']['text/plain'])
-                
-                if output_text:
-                    output_str = ''.join(output_text).strip()
-                    escaped_output = escape_html(output_str)
-                    html += f"""                <div class="output">
+                        # Skip text/plain if we already have an image (it's usually just "<Figure...>")
+                        if 'image/png' not in output['data']:
+                            has_output = True
+                            output_text = ''.join(output['data']['text/plain']).strip()
+                            escaped_output = escape_html(output_text)
+                            html += f"""                <div class="output">
                     <div class="output-label">output:</div>
                     <pre>{escaped_output}</pre>
                 </div>
