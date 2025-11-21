@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Programming Rl · chapter2code</title>
+    <link rel="stylesheet" href="../styles/post-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\(', '\)']],
+                displayMath: [['$$', '$$'], ['\[', '\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="../index.html">chapter2code</a>
+            <span class="sep">/</span>
+            <span class="current">dynamic programming rl</span>
+        </nav>
+
+        <article>
+            <header class="post-header">
+                <h1>Dynamic Programming Rl</h1>
+                <div class="meta">november 2025</div>
+            </header>
+
+            <div class="code-block">
+                <pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+import seaborn as sns
+
+np.random.seed(42)
+sns.set_style(&#39;whitegrid&#39;)</code></pre>
+            </div>
+
+            <div class="code-block">
+                <pre><code class="language-python">class GridWorld:
+    &quot;&quot;&quot;
+    GridWorld MDP environment.
+    
+    Grid layout:
+    - &#39;S&#39;: Start state
+    - &#39;G&#39;: Goal state (+10 reward)
+    - &#39;X&#39;: Obstacle (blocked)
+    - &#39;.&#39;: Normal state (-1 step cost)
+    &quot;&quot;&quot;
+    
+    def __init__(self, grid_size=(5, 5), goal=(4, 4), obstacles=None, gamma=0.9):
+        &quot;&quot;&quot;
+        Args:
+            grid_size: (height, width) of grid
+            goal: (row, col) of goal state
+            obstacles: list of (row, col) obstacle positions
+            gamma: discount factor
+        &quot;&quot;&quot;
+        self.height, self.width = grid_size
+        self.goal = goal
+        self.obstacles = obstacles or []
+        self.gamma = gamma
+        
+        # Actions: up, right, down, left
+        self.actions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        self.action_names = [&#39;→&#39;, &#39;↓&#39;, &#39;←&#39;, &#39;↑&#39;]
+        self.n_actions = len(self.actions)
+        
+        # Generate all states
+        self.states = []
+        for i in range(self.height):
+            for j in range(self.width):
+                if (i, j) not in self.obstacles:
+                    self.states.append((i, j))
+        
+        self.n_states = len(self.states)
+        self.state_to_idx = {s: i for i, s in enumerate(self.states)}
+    
+    def is_terminal(self, state):
+        &quot;&quot;&quot;Check if state is terminal (goal).&quot;&quot;&quot;
+        return state == self.goal
+    
+    def get_next_state(self, state, action_idx):
+        &quot;&quot;&quot;Get next state given current state and action.&quot;&quot;&quot;
+        if self.is_terminal(state):
+            return state  # Terminal state stays terminal
+        
+        action = self.actions[action_idx]
+        next_state = (state[0] + action[0], state[1] + action[1])
+        
+        # Check boundaries and obstacles
+        if (0 &lt;= next_state[0] &lt; self.height and 
+            0 &lt;= next_state[1] &lt; self.width and 
+            next_state not in self.obstacles):
+            return next_state
+        else:
+            return state  # Invalid move, stay in place
+    
+    def get_reward(self, state, action_idx, next_state):
+        &quot;&quot;&quot;Get reward for transition.&quot;&quot;&quot;
+        if next_state == self.goal:
+            return 10.0  # Goal reward
+        else:
+            return -1.0  # Step cost
+    
+    def get_transition_prob(self, state, action_idx, next_state):
+        &quot;&quot;&quot;
+        Get transition probability p(s&#39;|s,a).
+        For deterministic GridWorld, this is 1.0 for the resulting state.
+        &quot;&quot;&quot;
+        expected_next = self.get_next_state(state, action_idx)
+        return 1.0 if next_state == expected_next else 0.0
+
+# Create GridWorld with obstacles
+env = GridWorld(
+    grid_size=(5, 5),
+    goal=(4, 4),
+    obstacles=[(1, 1), (2, 2), (3, 1)],
+    gamma=0.9
+)
+
+print(f&quot;Grid size: {env.height}x{env.width}&quot;)
+print(f&quot;Number of states: {env.n_states}&quot;)
+print(f&quot;Number of actions: {env.n_actions}&quot;)
+print(f&quot;Goal state: {env.goal}&quot;)
+print(f&quot;Obstacles: {env.obstacles}&quot;)</code></pre>
+            </div>
+
+            <h2>GridWorld Environment</h2>
+
+<p>We'll implement a classic GridWorld environment where:</p>
+<ul>
+<li>Agent moves in a 2D grid</li>
+<li>Goal state provides positive reward</li>
+<li>Obstacle states are blocked</li>
+<li>Each step has a small negative reward (to encourage efficiency)</li>
+</ul>
+
+            <h2>Markov Decision Process (MDP) Formulation</h2>
+
+<p>An MDP is defined by the tuple $(\mathcal{S}, \mathcal{A}, P, R, \gamma)$ where:</p>
+
+<ul>
+<li>$\mathcal{S}$: finite set of states</li>
+<li>$\mathcal{A}$: finite set of actions</li>
+<li>$P(s' | s, a)$: transition probability function</li>
+<li>$R(s, a, s')$: reward function</li>
+<li>$\gamma \in [0, 1)$: discount factor</li>
+</ul>
+
+<p>The <strong>state-value function</strong> for policy $\pi$ is:</p>
+
+<p>$$v_\pi(s) = \mathbb{E}_\pi[G_t | S_t = s] = \mathbb{E}_\pi\left[\sum_{k=0}^{\infty} \gamma^k R_{t+k+1} | S_t = s\right]$$</p>
+
+<p>The <strong>action-value function</strong> is:</p>
+
+<p>$$q_\pi(s, a) = \mathbb{E}_\pi[G_t | S_t = s, A_t = a]$$</p>
+
+<p>The <strong>Bellman equation</strong> for $v_\pi$ is:</p>
+
+<p>$$v_\pi(s) = \sum_a \pi(a|s) \sum_{s', r} p(s', r | s, a)[r + \gamma v_\pi(s')]$$</p>
+
+            <div class="post-footer">
+                <a href="../index.html">← back to posts</a>
+            </div>
+        </article>
+    </div>
+</body>
+</html>
