@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sampling Methods · chapter2code</title>
+    <link rel="stylesheet" href="../styles/post-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\(', '\)']],
+                displayMath: [['$$', '$$'], ['\[', '\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="../index.html">chapter2code</a>
+            <span class="sep">/</span>
+            <span class="current">sampling methods</span>
+        </nav>
+
+        <article>
+            <header class="post-header">
+                <h1>Sampling Methods</h1>
+                <div class="meta">november 2025</div>
+            </header>
+
+            <h2>Summary</h2>
+
+<h3>Rejection Sampling: Key Takeaways</h3>
+
+<p><strong>Concept:</strong></p>
+<ul>
+<li>Sample from easy proposal $q(x)$</li>
+<li>Accept with probability $\frac{p(x)}{M \cdot q(x)}$</li>
+<li>Accepted samples follow target $p(x)$</li>
+</ul>
+
+<p><strong>Advantages:</strong></p>
+<ul>
+<li>✓ Simple to understand and implement</li>
+<li>✓ Produces independent samples</li>
+<li>✓ Works for unnormalized targets</li>
+<li>✓ No tuning required (beyond choosing proposal)</li>
+</ul>
+
+<p><strong>Disadvantages:</strong></p>
+<ul>
+<li>✗ Requires suitable proposal with $M \cdot q(x) \geq p(x)$</li>
+<li>✗ Acceptance rate $\frac{1}{M}$ can be very low</li>
+<li>✗ Curse of dimensionality (exponential degradation)</li>
+<li>✗ Wastes computation on rejected samples</li>
+</ul>
+
+<p><strong>When to Use:</strong></p>
+<ul>
+<li>Low-dimensional problems (1D, 2D)</li>
+<li>When a good proposal is available</li>
+<li>Educational purposes</li>
+<li>As a component in more advanced methods</li>
+</ul>
+
+<p><strong>Alternatives for Complex Problems:</strong></p>
+<p>- <strong>Importance Sampling</strong>: Weight samples instead of rejecting</p>
+<p>- <strong>Markov Chain Monte Carlo (MCMC)</strong>: Metropolis-Hastings, Gibbs sampling</p>
+<p>- <strong>Variational Inference</strong>: Optimization-based approximation</p>
+<p>- <strong>Normalizing Flows</strong>: Learn invertible transformations</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">def rejection_sampling_nd(dim, n_samples=1000):
+    &quot;&quot;&quot;
+    Rejection sampling for d-dimensional standard normal using uniform proposal.
+    
+    Target: p(x) = (2π)^(-d/2) exp(-||x||²/2)  (standard normal)
+    Proposal: q(x) = (2R)^(-d)  (uniform in hypercube [-R, R]^d)
+    &quot;&quot;&quot;
+    R = 3  # Hypercube radius
+    
+    # For standard normal, max density is at origin
+    # M = max[p(x)/q(x)] occurs at x=0
+    p_max = (2 * np.pi) ** (-dim / 2)  # p(0) for standard normal
+    q_uniform = (2 * R) ** (-dim)  # uniform density
+    M = p_max / q_uniform
+    
+    samples = []
+    n_proposals = 0
+    
+    while len(samples) &lt; n_samples:
+        # Sample from uniform proposal
+        x = np.random.uniform(-R, R, size=dim)
+        n_proposals += 1
+        
+        # Compute target density
+        p_x = (2 * np.pi) ** (-dim / 2) * np.exp(-0.5 * np.sum(x**2))
+        
+        # Accept/reject
+        accept_prob = p_x / (M * q_uniform)
+        if np.random.uniform() &lt;= accept_prob:
+            samples.append(x)
+    
+    acceptance_rate = n_samples / n_proposals
+    return np.array(samples), acceptance_rate, M
+
+# Test different dimensions
+dimensions = [1, 2, 3, 5, 7, 10]
+dim_results = []
+
+print(&quot;Dimension | Acceptance Rate |        M (envelope constant)&quot;)
+print(&quot;-&quot; * 65)
+
+for d in dimensions:
+    _, acc_rate, M_val = rejection_sampling_nd(d, n_samples=500)
+    dim_results.append({&#39;dim&#39;: d, &#39;acc_rate&#39;: acc_rate, &#39;M&#39;: M_val})
+    print(f&quot;   {d:2d}     |     {acc_rate:6.2%}      |   {M_val:12.2e}&quot;)
+
+# Plot results
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+dims = [r[&#39;dim&#39;] for r in dim_results]
+acc_rates = [r[&#39;acc_rate&#39;] for r in dim_results]
+Ms = [r[&#39;M&#39;] for r in dim_results]
+
+# Acceptance rate vs dimension
+axes[0].plot(dims, acc_rates, &#39;bo-&#39;, linewidth=2, markersize=8)
+axes[0].set_xlabel(&#39;Dimension&#39;, fontsize=12)
+axes[0].set_ylabel(&#39;Acceptance Rate&#39;, fontsize=12)
+axes[0].set_title(&#39;Curse of Dimensionality: Acceptance Rate&#39;, fontsize=13, fontweight=&#39;bold&#39;)
+axes[0].grid(True, alpha=0.3)
+axes[0].set_yscale(&#39;log&#39;)
+axes[0].set_ylim(bottom=1e-5)
+
+# M value vs dimension
+axes[1].semilogy(dims, Ms, &#39;ro-&#39;, linewidth=2, markersize=8)
+axes[1].set_xlabel(&#39;Dimension&#39;, fontsize=12)
+axes[1].set_ylabel(&#39;M (log scale)&#39;, fontsize=12)
+axes[1].set_title(&#39;Envelope Constant Grows Exponentially&#39;, fontsize=13, fontweight=&#39;bold&#39;)
+axes[1].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+print(&quot;\n&quot; + &quot;=&quot;*65)
+print(&quot;Conclusion: Rejection sampling becomes impractical in high dimensions!&quot;)
+print(&quot;=&quot;*65)</code></pre>
+            </div>
+
+            <h2>Demonstration: Curse of Dimensionality</h2>
+
+<p>Let's demonstrate how acceptance rate degrades with dimension.</p>
+
+            <h2>Limitations of Rejection Sampling</h2>
+
+<p>While simple and elegant, rejection sampling has significant limitations:</p>
+
+<h3>1. **Curse of Dimensionality**</h3>
+
+<p>In high dimensions, finding a suitable proposal becomes extremely difficult:</p>
+<ul>
+<li>The volume of the "rejection region" grows exponentially</li>
+<li>Acceptance rate $\frac{1}{M}$ decreases exponentially with dimension</li>
+<li>Essentially unusable beyond ~20 dimensions</li>
+</ul>
+
+<h3>2. **Requires Bounded Ratio**</h3>
+
+<p>We need $M \cdot q(x) \geq p(x)$ for all $x$, which requires:</p>
+<ul>
+<li>$p(x)$ has lighter tails than $q(x)$</li>
+<li>Difficult when $p(x)$ has heavy tails</li>
+</ul>
+
+<h3>3. **Wastes Computation**</h3>
+
+<ul>
+<li>Many samples are rejected</li>
+<li>All evaluations of $p(x)$ for rejected samples are wasted</li>
+<li>Inefficient when $p(x)$ is expensive to evaluate</li>
+</ul>
+
+<h3>When to Use Rejection Sampling</h3>
+
+<p>Best suited for:</p>
+<p>- <strong>Low dimensions</strong> (1D, 2D)</p>
+<p>- <strong>Simple distributions</strong> with known bounds</p>
+<p>- <strong>Teaching purposes</strong> to understand Monte Carlo principles</p>
+<ul>
+<li>When a good proposal is readily available</li>
+</ul>
+
+            <div class="code-block">
+                <pre><code class="language-python"># Visualize comparison
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+x_plot = np.linspace(0, 1, 500)
+target_vals = target_pdf(x_plot)
+
+for idx, (name, result) in enumerate(results.items()):
+    ax = axes[idx // 2, idx % 2]
+    
+    # Plot target and proposal envelope
+    prop_vals = proposals[name][&#39;pdf&#39;](x_plot)
+    ax.plot(x_plot, target_vals, &#39;b-&#39;, linewidth=2.5, label=&#39;Target: Beta(2,5)&#39;)
+    ax.plot(x_plot, result[&#39;M&#39;] * prop_vals, &#39;r--&#39;, linewidth=2, 
+            label=f&quot;M·{name} (M={result[&#39;M&#39;]:.2f})&quot;)
+    ax.fill_between(x_plot, 0, target_vals, alpha=0.3, color=&#39;blue&#39;)
+    ax.fill_between(x_plot, target_vals, result[&#39;M&#39;] * prop_vals, 
+                    alpha=0.2, color=&#39;red&#39;, label=&#39;Rejection region&#39;)
+    
+    ax.set_xlabel(&#39;x&#39;, fontsize=11)
+    ax.set_ylabel(&#39;Density&#39;, fontsize=11)
+    ax.set_title(f&#39;Proposal: {name}&#39;, fontsize=12, fontweight=&#39;bold&#39;)
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    
+    # Add acceptance rate text
+    ax.text(0.65, ax.get_ylim()[1] * 0.85, 
+            f&#39;Accept: {result[&quot;acceptance_rate&quot;]:.1%}&#39;,
+            bbox=dict(boxstyle=&#39;round&#39;, facecolor=&#39;yellow&#39;, alpha=0.6),
+            fontsize=10)
+
+# Remove unused subplot
+axes[1, 1].axis(&#39;off&#39;)
+
+plt.tight_layout()
+plt.show()
+
+print(&quot;\n&quot; + &quot;=&quot;*60)
+print(&quot;Key Insight: Better proposals (closer to target) have:&quot;)
+print(&quot;  - Lower M (tighter envelope)&quot;)
+print(&quot;  - Higher acceptance rate (less waste)&quot;)
+print(&quot;=&quot;*60)</code></pre>
+            </div>
+
+            <div class="code-block">
+                <pre><code class="language-python"># Compare different proposals for Beta(2,5)
+proposals = {
+    &#39;Uniform(0,1)&#39;: {
+        &#39;sample&#39;: lambda: np.random.uniform(0, 1),
+        &#39;pdf&#39;: lambda x: np.ones_like(x) if isinstance(x, np.ndarray) else 1.0
+    },
+    &#39;Beta(2,2)&#39;: {
+        &#39;sample&#39;: lambda: np.random.beta(2, 2),
+        &#39;pdf&#39;: lambda x: stats.beta.pdf(x, 2, 2)
+    },
+    &#39;Beta(2,4)&#39;: {
+        &#39;sample&#39;: lambda: np.random.beta(2, 4),
+        &#39;pdf&#39;: lambda x: stats.beta.pdf(x, 2, 4)
+    }
+}
+
+results = {}
+x_eval = np.linspace(0.001, 0.999, 1000)
+
+for name, prop in proposals.items():
+    # Compute M
+    M_val = np.max(target_pdf(x_eval) / prop[&#39;pdf&#39;](x_eval)) * 1.05
+    
+    # Sample
+    samples_prop, acc_rate = rejection_sampling(
+        target_pdf, prop[&#39;sample&#39;], prop[&#39;pdf&#39;], M_val, n_samples=2000
+    )
+    
+    results[name] = {
+        &#39;M&#39;: M_val,
+        &#39;acceptance_rate&#39;: acc_rate,
+        &#39;samples&#39;: samples_prop
+    }
+    
+    print(f&quot;{name:15} | M = {M_val:6.3f} | Acceptance rate = {acc_rate:6.2%}&quot;)</code></pre>
+            </div>
+
+            <h2>Impact of Proposal Choice</h2>
+
+<p>The choice of proposal distribution $q(x)$ critically affects efficiency. Let's compare different proposals for the same target.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python"># Visualize mixture sampling
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+x_plot = np.linspace(-5, 5, 500)
+target_vals = target_mixture(x_plot)
+proposal_vals = proposal_pdf_gauss(x_plot)
+
+# Left: Show envelope
+axes[0].plot(x_plot, target_vals, &#39;b-&#39;, linewidth=2, label=&#39;Target (Mixture)&#39;)
+axes[0].plot(x_plot, M_gauss * proposal_vals, &#39;r--&#39;, linewidth=2, 
+             label=f&#39;M·Proposal (M={M_gauss:.2f})&#39;)
+axes[0].fill_between(x_plot, 0, target_vals, alpha=0.3, color=&#39;blue&#39;)
+axes[0].set_xlabel(&#39;x&#39;, fontsize=12)
+axes[0].set_ylabel(&#39;Density&#39;, fontsize=12)
+axes[0].set_title(&#39;Mixture of Gaussians: Proposal Envelope&#39;, fontsize=13, fontweight=&#39;bold&#39;)
+axes[0].legend(fontsize=10)
+axes[0].grid(True, alpha=0.3)
+axes[0].set_xlim(-5, 5)
+
+# Right: Results
+axes[1].hist(samples_mixture, bins=60, density=True, alpha=0.6, color=&#39;skyblue&#39;,
+             edgecolor=&#39;black&#39;, label=&#39;Samples&#39;)
+axes[1].plot(x_plot, target_vals, &#39;b-&#39;, linewidth=2, label=&#39;True Distribution&#39;)
+axes[1].set_xlabel(&#39;x&#39;, fontsize=12)
+axes[1].set_ylabel(&#39;Density&#39;, fontsize=12)
+axes[1].set_title(&#39;Rejection Sampling: Mixture Results&#39;, fontsize=13, fontweight=&#39;bold&#39;)
+axes[1].legend(fontsize=10)
+axes[1].grid(True, alpha=0.3)
+axes[1].set_xlim(-5, 5)
+
+plt.tight_layout()
+plt.show()
+
+# Analyze the bimodality
+print(f&quot;\nBimodal distribution analysis:&quot;)
+print(f&quot;Proportion of samples &lt; 0: {np.mean(samples_mixture &lt; 0):.2%}&quot;)
+print(f&quot;Proportion of samples &gt; 0: {np.mean(samples_mixture &gt; 0):.2%}&quot;)
+print(f&quot;(True proportions: 30% at -2, 70% at +2)&quot;)</code></pre>
+            </div>
+
+            <div class="code-block">
+                <pre><code class="language-python"># Define mixture of Gaussians target
+def target_mixture(x):
+    &quot;&quot;&quot;Mixture: 0.3*N(-2, 0.5^2) + 0.7*N(2, 0.8^2)&quot;&quot;&quot;
+    component1 = 0.3 * stats.norm.pdf(x, loc=-2, scale=0.5)
+    component2 = 0.7 * stats.norm.pdf(x, loc=2, scale=0.8)
+    return component1 + component2
+
+# Use a wide Gaussian as proposal
+proposal_mean = 0
+proposal_std = 3
+proposal_sample_gauss = lambda: np.random.normal(proposal_mean, proposal_std)
+proposal_pdf_gauss = lambda x: stats.norm.pdf(x, loc=proposal_mean, scale=proposal_std)
+
+# Find M by evaluating on a grid
+x_range = np.linspace(-5, 5, 2000)
+ratio = target_mixture(x_range) / proposal_pdf_gauss(x_range)
+M_gauss = np.max(ratio) * 1.1  # Add 10% safety margin
+print(f&quot;M for Gaussian proposal = {M_gauss:.4f}&quot;)
+
+# Run rejection sampling with Gaussian proposal
+samples_mixture, accept_rate_gauss = rejection_sampling(
+    target_mixture, proposal_sample_gauss, proposal_pdf_gauss, M_gauss, n_samples=5000
+)
+
+print(f&quot;Acceptance rate with Gaussian proposal: {accept_rate_gauss:.2%}&quot;)</code></pre>
+            </div>
+
+            <h2>Example 2: Sampling from a Mixture of Gaussians</h2>
+
+<p>A more challenging example: sample from a bimodal distribution (mixture of two Gaussians).</p>
+
+<p>Target distribution:</p>
+<p>$$p(x) = 0.3 \cdot \mathcal{N}(x | -2, 0.5^2) + 0.7 \cdot \mathcal{N}(x | 2, 0.8^2)$$</p>
+
+            <div class="code-block">
+                <pre><code class="language-python"># Visualize rejection sampling
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+# Left: Show proposal envelope
+x_plot = np.linspace(0, 1, 500)
+target_vals = target_pdf(x_plot)
+proposal_vals = proposal_pdf(x_plot)
+
+axes[0].plot(x_plot, target_vals, &#39;b-&#39;, linewidth=2, label=&#39;Target: Beta(2,5)&#39;)
+axes[0].plot(x_plot, M * proposal_vals, &#39;r--&#39;, linewidth=2, label=f&#39;M·Proposal (M={M:.2f})&#39;)
+axes[0].fill_between(x_plot, 0, target_vals, alpha=0.3, color=&#39;blue&#39;)
+axes[0].fill_between(x_plot, target_vals, M * proposal_vals, alpha=0.2, color=&#39;red&#39;)
+axes[0].set_xlabel(&#39;x&#39;, fontsize=12)
+axes[0].set_ylabel(&#39;Density&#39;, fontsize=12)
+axes[0].set_title(&#39;Rejection Sampling: Proposal Envelope&#39;, fontsize=13, fontweight=&#39;bold&#39;)
+axes[0].legend(fontsize=10)
+axes[0].grid(True, alpha=0.3)
+axes[0].text(0.6, 1.5, f&#39;Acceptance Rate: {accept_rate:.1%}&#39;, 
+            bbox=dict(boxstyle=&#39;round&#39;, facecolor=&#39;wheat&#39;, alpha=0.5), fontsize=10)
+
+# Right: Compare samples to true distribution
+axes[1].hist(samples, bins=40, density=True, alpha=0.6, color=&#39;skyblue&#39;, 
+             edgecolor=&#39;black&#39;, label=&#39;Samples (histogram)&#39;)
+axes[1].plot(x_plot, target_vals, &#39;b-&#39;, linewidth=2, label=&#39;True Beta(2,5)&#39;)
+axes[1].set_xlabel(&#39;x&#39;, fontsize=12)
+axes[1].set_ylabel(&#39;Density&#39;, fontsize=12)
+axes[1].set_title(&#39;Rejection Sampling Results&#39;, fontsize=13, fontweight=&#39;bold&#39;)
+axes[1].legend(fontsize=10)
+axes[1].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# Compute statistics
+print(f&quot;\nSample statistics:&quot;)
+print(f&quot;Sample mean: {np.mean(samples):.4f}&quot;)
+print(f&quot;True mean: {alpha/(alpha+beta):.4f}&quot;)
+print(f&quot;Sample std: {np.std(samples):.4f}&quot;)
+print(f&quot;True std: {np.sqrt(alpha*beta/((alpha+beta)**2*(alpha+beta+1))):.4f}&quot;)</code></pre>
+            </div>
+
+            <div class="code-block">
+                <pre><code class="language-python">def rejection_sampling(target_pdf, proposal_sample, proposal_pdf, M, n_samples=1000):
+    &quot;&quot;&quot;
+    Rejection sampling algorithm.
+    
+    Args:
+        target_pdf: Target distribution p(x) (must be normalized or unnormalized)
+        proposal_sample: Function to sample from proposal q(x)
+        proposal_pdf: Proposal density function q(x)
+        M: Upper bound constant such that M*q(x) &gt;= p(x) for all x
+        n_samples: Number of samples to generate
+    
+    Returns:
+        samples: Accepted samples from target distribution
+        acceptance_rate: Fraction of accepted samples
+    &quot;&quot;&quot;
+    samples = []
+    n_proposals = 0
+    
+    while len(samples) &lt; n_samples:
+        # Sample from proposal
+        x = proposal_sample()
+        n_proposals += 1
+        
+        # Compute acceptance probability
+        accept_prob = target_pdf(x) / (M * proposal_pdf(x))
+        
+        # Accept/reject
+        u = np.random.uniform(0, 1)
+        if u &lt;= accept_prob:
+            samples.append(x)
+    
+    acceptance_rate = n_samples / n_proposals
+    return np.array(samples), acceptance_rate
+
+# Define target: Beta(2, 5) distribution
+alpha, beta = 2, 5
+target_pdf = lambda x: stats.beta.pdf(x, alpha, beta)
+
+# Define proposal: Uniform(0, 1)
+proposal_sample = lambda: np.random.uniform(0, 1)
+proposal_pdf = lambda x: 1.0  # Uniform on [0,1]
+
+# Find M: maximum of p(x) / q(x)
+x_grid = np.linspace(0, 1, 1000)
+M = np.max(target_pdf(x_grid) / proposal_pdf(x_grid))
+print(f&quot;M = {M:.4f}&quot;)
+
+# Run rejection sampling
+samples, accept_rate = rejection_sampling(
+    target_pdf, proposal_sample, proposal_pdf, M, n_samples=5000
+)
+
+print(f&quot;\nAcceptance rate: {accept_rate:.2%}&quot;)
+print(f&quot;Theoretical acceptance rate: {1/M:.2%}&quot;)
+print(f&quot;Number of samples: {len(samples)}&quot;)</code></pre>
+            </div>
+
+            <h2>Example 1: Sampling from a Beta Distribution</h2>
+
+<p>Let's sample from a $\text{Beta}(2, 5)$ distribution using a uniform proposal.</p>
+
+            <h2>Rejection Sampling</h2>
+
+<p><strong>Rejection sampling</strong> (also called **accept-reject sampling**) is a fundamental Monte Carlo method for sampling from a target distribution $p(x)$ that may be difficult to sample from directly.</p>
+
+<h3>The Problem</h3>
+
+<p>We want to sample from a target distribution $p(x)$, but:</p>
+<ul>
+<li>We can only evaluate $p(x)$ up to a normalizing constant: $p(x) = \frac{\tilde{p}(x)}{Z_p}$ where $Z_p$ is unknown</li>
+<li>We cannot sample directly from $p(x)$</li>
+</ul>
+
+<h3>The Solution</h3>
+
+<p>Use an <strong>proposal distribution</strong> $q(x)$ that is easy to sample from, and accept/reject samples based on the ratio $\frac{p(x)}{q(x)}$.</p>
+
+<h3>Algorithm</h3>
+
+<p>1. Choose a proposal distribution $q(x)$ and constant $M$ such that:</p>
+<p>   $$M \cdot q(x) \geq p(x) \quad \forall x$$</p>
+
+<p>2. For each sample:</p>
+<p>   - Draw $x \sim q(x)$ from the proposal</p>
+<p>   - Draw $u \sim \text{Uniform}(0, 1)$</p>
+<p>   - <strong>Accept</strong> $x$ if $u \leq \frac{p(x)}{M \cdot q(x)}$, otherwise **reject**</p>
+
+<p>3. Return all accepted samples</p>
+
+<h3>Key Properties</h3>
+
+<p>- <strong>Acceptance probability</strong>: $\frac{1}{M}$</p>
+<p>- <strong>Efficiency</strong>: Depends on how well $q(x)$ approximates $p(x)$</p>
+<p>- <strong>Correctness</strong>: Accepted samples are distributed according to $p(x)$</p>
+
+<p>The acceptance probability is:</p>
+<p>$$\alpha = \int \frac{p(x)}{M \cdot q(x)} q(x) dx = \frac{1}{M} \int p(x) dx = \frac{1}{M}$$</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+from scipy.special import gamma as gamma_func
+
+np.random.seed(42)
+sns.set_style(&#39;whitegrid&#39;)
+plt.rcParams[&#39;figure.figsize&#39;] = (10, 6)</code></pre>
+            </div>
+
+            <h2>Why Sampling?</h2>
+
+<p>In many applications, we need to compute expectations of the form:</p>
+
+<p>$$\mathbb{E}_{x \sim p}[f(x)] = \int f(x) p(x) dx$$</p>
+
+<p>However, this integral may be:</p>
+<p>- <strong>Intractable</strong>: No closed-form solution exists</p>
+<p>- <strong>High-dimensional</strong>: Curse of dimensionality makes numerical integration infeasible</p>
+<p>- <strong>Complex</strong>: $p(x)$ may only be known up to a normalizing constant</p>
+
+<p><strong>Monte Carlo approximation</strong> solves this by drawing samples $x_1, x_2, \ldots, x_N \sim p(x)$ and approximating:</p>
+
+<p>$$\mathbb{E}_{x \sim p}[f(x)] \approx \frac{1}{N} \sum_{i=1}^N f(x_i)$$</p>
+
+<p>By the <strong>Law of Large Numbers</strong>, this approximation converges to the true expectation as $N \to \infty$.</p>
+
+            <div class="post-footer">
+                <a href="../index.html">← back to posts</a>
+            </div>
+        </article>
+    </div>
+</body>
+</html>

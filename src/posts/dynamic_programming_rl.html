@@ -139,6 +139,431 @@ print(f&quot;Goal state: {env.goal}&quot;)
 print(f&quot;Obstacles: {env.obstacles}&quot;)</code></pre>
             </div>
 
+            <h2>Summary and Key Insights</h2>
+
+<h3>Dynamic Programming in RL</h3>
+
+<p><strong>Advantages:</strong></p>
+<ul>
+<li>Guaranteed to find optimal policy (given perfect model)</li>
+<li>Well-understood convergence properties</li>
+<li>Foundation for modern RL algorithms</li>
+</ul>
+
+<p><strong>Limitations:</strong></p>
+<p>1. <strong>Requires perfect model</strong>: Need to know $p(s'|s,a)$ and $r(s,a,s')$</p>
+<p>2. <strong>Computational cost</strong>: $O(|S|^2|A|)$ per iteration</p>
+<p>3. <strong>Curse of dimensionality</strong>: Intractable for large state spaces</p>
+
+<h3>Policy Iteration vs Value Iteration</h3>
+
+<p><strong>Policy Iteration:</strong></p>
+<ul>
+<li>Alternates between full policy evaluation and policy improvement</li>
+<li>Often converges in fewer iterations</li>
+<li>Each iteration is more expensive (requires solving system of equations)</li>
+</ul>
+
+<p><strong>Value Iteration:</strong></p>
+<ul>
+<li>Combines evaluation and improvement in single update</li>
+<li>More iterations but each is cheaper</li>
+<li>Often preferred in practice</li>
+</ul>
+
+<h3>Connection to Modern RL</h3>
+
+<p>Dynamic programming ideas underpin many modern algorithms:</p>
+<p>- <strong>Q-Learning</strong>: Off-policy value iteration with function approximation</p>
+<p>- <strong>SARSA</strong>: On-policy value iteration</p>
+<p>- <strong>Actor-Critic</strong>: Approximate policy iteration</p>
+<p>- <strong>DQN</strong>: Deep Q-Networks use value iteration with neural networks</p>
+
+<p>The key insight: when we don't have a model, we can <strong>sample</strong> transitions from the environment to estimate the expectations in the Bellman equations. This leads to temporal-difference learning and Monte Carlo methods.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python"># Plot convergence of value iteration
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+max_values = [np.max(V) for V in vi_history]
+plt.plot(max_values, marker=&#39;o&#39;, linewidth=2, markersize=4)
+plt.xlabel(&#39;Iteration&#39;, fontsize=12)
+plt.ylabel(&#39;Max State Value&#39;, fontsize=12)
+plt.title(&#39;Value Iteration Convergence&#39;, fontsize=13, fontweight=&#39;bold&#39;)
+plt.grid(True, alpha=0.3)
+
+plt.subplot(1, 2, 2)
+# Compute Bellman error (max difference from optimal)
+bellman_errors = [np.max(np.abs(V - vi_V)) for V in vi_history]
+plt.semilogy(bellman_errors, marker=&#39;o&#39;, linewidth=2, markersize=4, color=&#39;red&#39;)
+plt.xlabel(&#39;Iteration&#39;, fontsize=12)
+plt.ylabel(&#39;Max Bellman Error (log scale)&#39;, fontsize=12)
+plt.title(&#39;Value Iteration Error Decay&#39;, fontsize=13, fontweight=&#39;bold&#39;)
+plt.grid(True, alpha=0.3, which=&#39;both&#39;)
+
+plt.tight_layout()
+plt.show()
+
+print(f&quot;\nValue Iteration Statistics:&quot;)
+print(f&quot;Total iterations: {len(vi_history)}&quot;)
+print(f&quot;Final max value: {max_values[-1]:.4f}&quot;)
+print(f&quot;Final Bellman error: {bellman_errors[-1]:.2e}&quot;)</code></pre>
+            </div>
+
+            <h2>Convergence Analysis</h2>
+
+<p>Let's compare the convergence behavior of policy iteration vs value iteration.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">def plot_value_function(env, V, title=&quot;Value Function&quot;):
+    &quot;&quot;&quot;Plot value function as a heatmap.&quot;&quot;&quot;
+    V_grid = np.full((env.height, env.width), np.nan)
+    
+    for state_idx, state in enumerate(env.states):
+        V_grid[state[0], state[1]] = V[state_idx]
+    
+    plt.figure(figsize=(8, 7))
+    im = plt.imshow(V_grid, cmap=&#39;RdYlGn&#39;, interpolation=&#39;nearest&#39;)
+    plt.colorbar(im, label=&#39;State Value&#39;)
+    
+    # Add grid lines
+    for i in range(env.height + 1):
+        plt.axhline(i - 0.5, color=&#39;black&#39;, linewidth=1)
+    for j in range(env.width + 1):
+        plt.axvline(j - 0.5, color=&#39;black&#39;, linewidth=1)
+    
+    # Add value labels
+    for i in range(env.height):
+        for j in range(env.width):
+            if not np.isnan(V_grid[i, j]):
+                plt.text(j, i, f&#39;{V_grid[i, j]:.1f}&#39;, 
+                        ha=&#39;center&#39;, va=&#39;center&#39;, fontsize=12, fontweight=&#39;bold&#39;)
+    
+    # Mark special states
+    goal_y, goal_x = env.goal
+    plt.text(goal_x, goal_y - 0.35, &#39;GOAL&#39;, ha=&#39;center&#39;, fontsize=8, color=&#39;darkgreen&#39;)
+    
+    for obs in env.obstacles:
+        plt.text(obs[1], obs[0], &#39;X&#39;, ha=&#39;center&#39;, va=&#39;center&#39;, 
+                fontsize=20, color=&#39;red&#39;, fontweight=&#39;bold&#39;)
+    
+    plt.title(title, fontsize=14, fontweight=&#39;bold&#39;)
+    plt.xticks(range(env.width))
+    plt.yticks(range(env.height))
+    plt.xlabel(&#39;Column&#39;)
+    plt.ylabel(&#39;Row&#39;)
+    plt.tight_layout()
+    plt.show()
+
+def plot_policy(env, policy, title=&quot;Optimal Policy&quot;):
+    &quot;&quot;&quot;Plot policy as arrows.&quot;&quot;&quot;
+    plt.figure(figsize=(8, 7))
+    ax = plt.gca()
+    
+    # Draw grid
+    for i in range(env.height + 1):
+        plt.axhline(i, color=&#39;black&#39;, linewidth=1)
+    for j in range(env.width + 1):
+        plt.axvline(j, color=&#39;black&#39;, linewidth=1)
+    
+    # Draw obstacles
+    for obs in env.obstacles:
+        rect = Rectangle((obs[1], obs[0]), 1, 1, facecolor=&#39;gray&#39;, alpha=0.5)
+        ax.add_patch(rect)
+    
+    # Draw goal
+    goal_rect = Rectangle((env.goal[1], env.goal[0]), 1, 1, 
+                          facecolor=&#39;lightgreen&#39;, alpha=0.5)
+    ax.add_patch(goal_rect)
+    plt.text(env.goal[1] + 0.5, env.goal[0] + 0.5, &#39;GOAL&#39;, 
+            ha=&#39;center&#39;, va=&#39;center&#39;, fontsize=10, fontweight=&#39;bold&#39;)
+    
+    # Draw policy arrows
+    arrow_scale = 0.3
+    for state_idx, state in enumerate(env.states):
+        if env.is_terminal(state):
+            continue
+        
+        action_idx = np.argmax(policy[state_idx])
+        action = env.actions[action_idx]
+        
+        y, x = state[0] + 0.5, state[1] + 0.5
+        dy, dx = action[0] * arrow_scale, action[1] * arrow_scale
+        
+        plt.arrow(x, y, dx, dy, head_width=0.15, head_length=0.1, 
+                 fc=&#39;blue&#39;, ec=&#39;blue&#39;, linewidth=2)
+    
+    plt.xlim(0, env.width)
+    plt.ylim(0, env.height)
+    plt.gca().invert_yaxis()
+    plt.title(title, fontsize=14, fontweight=&#39;bold&#39;)
+    plt.xlabel(&#39;Column&#39;)
+    plt.ylabel(&#39;Row&#39;)
+    plt.xticks(range(env.width + 1))
+    plt.yticks(range(env.height + 1))
+    plt.tight_layout()
+    plt.show()
+
+# Visualize results
+plot_value_function(env, optimal_V, &quot;Optimal Value Function&quot;)
+plot_policy(env, optimal_policy, &quot;Optimal Policy&quot;)</code></pre>
+            </div>
+
+            <h2>Visualization</h2>
+
+<p>Let's visualize the optimal value function and policy.</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">def value_iteration(env, theta=1e-6, max_iterations=1000):
+    &quot;&quot;&quot;
+    Find optimal policy using value iteration.
+    
+    Args:
+        env: GridWorld environment
+        theta: convergence threshold
+        max_iterations: maximum number of iterations
+    
+    Returns:
+        policy: optimal policy
+        V: optimal value function
+        history: list of V at each iteration
+    &quot;&quot;&quot;
+    V = np.zeros(env.n_states)
+    history = []
+    
+    for iteration in range(max_iterations):
+        delta = 0
+        history.append(V.copy())
+        
+        # Update value for each state
+        for state_idx, state in enumerate(env.states):
+            if env.is_terminal(state):
+                continue
+            
+            v = V[state_idx]
+            
+            # Compute action values and take max
+            action_values = np.zeros(env.n_actions)
+            for action_idx in range(env.n_actions):
+                next_state = env.get_next_state(state, action_idx)
+                next_state_idx = env.state_to_idx[next_state]
+                reward = env.get_reward(state, action_idx, next_state)
+                action_values[action_idx] = reward + env.gamma * V[next_state_idx]
+            
+            # Bellman optimality update
+            V[state_idx] = np.max(action_values)
+            delta = max(delta, abs(v - V[state_idx]))
+        
+        if delta &lt; theta:
+            print(f&quot;Value iteration converged in {iteration + 1} iterations&quot;)
+            break
+    
+    # Extract optimal policy
+    policy = np.zeros((env.n_states, env.n_actions))
+    for state_idx, state in enumerate(env.states):
+        if env.is_terminal(state):
+            continue
+        
+        action_values = np.zeros(env.n_actions)
+        for action_idx in range(env.n_actions):
+            next_state = env.get_next_state(state, action_idx)
+            next_state_idx = env.state_to_idx[next_state]
+            reward = env.get_reward(state, action_idx, next_state)
+            action_values[action_idx] = reward + env.gamma * V[next_state_idx]
+        
+        best_action = np.argmax(action_values)
+        policy[state_idx, best_action] = 1.0
+    
+    return policy, V, history
+
+# Run value iteration
+vi_policy, vi_V, vi_history = value_iteration(env)
+
+print(f&quot;\nOptimal policy found!&quot;)
+print(f&quot;Value iteration took {len(vi_history)} iterations&quot;)
+print(f&quot;\nVerifying policies match:&quot;)
+print(f&quot;Policy iteration == Value iteration: {np.allclose(optimal_policy, vi_policy)}&quot;)
+print(f&quot;V_PI == V_VI: {np.allclose(optimal_V, vi_V)}&quot;)</code></pre>
+            </div>
+
+            <h2>Value Iteration</h2>
+
+<p><strong>Value iteration</strong> combines policy evaluation and improvement into a single update. It directly computes the optimal value function using the Bellman optimality equation:</p>
+
+<p>$$v_{k+1}(s) = \max_a \sum_{s'} p(s'|s,a)[r(s,a,s') + \gamma v_k(s')]$$</p>
+
+<p>Once the optimal value function $v_*$ is found, the optimal policy is:</p>
+
+<p>$$\pi_*(s) = \arg\max_a \sum_{s'} p(s'|s,a)[r(s,a,s') + \gamma v_*(s')]$$</p>
+
+<p><strong>Algorithm:</strong></p>
+<p>1. Initialize $V(s) = 0$ for all states</p>
+<p>2. Repeat until convergence:</p>
+<p>   - For each state $s$:</p>
+<p>     - $V(s) \leftarrow \max_a \sum_{s'} p(s'|s,a)[r + \gamma V(s')]$</p>
+<p>3. Extract policy: $\pi(s) = \arg\max_a \sum_{s'} p(s'|s,a)[r + \gamma V(s')]$</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">def policy_iteration(env, theta=1e-6, max_iterations=100):
+    &quot;&quot;&quot;
+    Find optimal policy using policy iteration.
+    
+    Args:
+        env: GridWorld environment
+        theta: convergence threshold for policy evaluation
+        max_iterations: maximum policy improvement iterations
+    
+    Returns:
+        policy: optimal policy
+        V: optimal value function
+        history: list of (V, policy) at each iteration
+    &quot;&quot;&quot;
+    # Initialize with uniform random policy
+    policy = np.ones((env.n_states, env.n_actions)) / env.n_actions
+    history = []
+    
+    for iteration in range(max_iterations):
+        # Policy Evaluation
+        V, _ = policy_evaluation(env, policy, theta)
+        history.append((V.copy(), policy.copy()))
+        
+        # Policy Improvement
+        policy_stable = True
+        new_policy = np.zeros((env.n_states, env.n_actions))
+        
+        for state_idx, state in enumerate(env.states):
+            if env.is_terminal(state):
+                continue
+            
+            # Compute action values
+            action_values = np.zeros(env.n_actions)
+            for action_idx in range(env.n_actions):
+                next_state = env.get_next_state(state, action_idx)
+                next_state_idx = env.state_to_idx[next_state]
+                reward = env.get_reward(state, action_idx, next_state)
+                action_values[action_idx] = reward + env.gamma * V[next_state_idx]
+            
+            # Greedy policy improvement
+            best_action = np.argmax(action_values)
+            new_policy[state_idx, best_action] = 1.0
+            
+            # Check if policy changed
+            if not np.allclose(policy[state_idx], new_policy[state_idx]):
+                policy_stable = False
+        
+        policy = new_policy
+        
+        if policy_stable:
+            print(f&quot;Policy iteration converged in {iteration + 1} iterations&quot;)
+            return policy, V, history
+    
+    print(f&quot;Policy iteration reached max iterations ({max_iterations})&quot;)
+    return policy, V, history
+
+# Run policy iteration
+optimal_policy, optimal_V, pi_history = policy_iteration(env)
+
+print(f&quot;\nOptimal policy found!&quot;)
+print(f&quot;Number of policy improvement steps: {len(pi_history)}&quot;)</code></pre>
+            </div>
+
+            <h2>Policy Iteration</h2>
+
+<p><strong>Policy iteration</strong> alternates between:</p>
+<p>1. <strong>Policy Evaluation</strong>: Compute $v_\pi$ for current policy</p>
+<p>2. <strong>Policy Improvement</strong>: Update policy greedily w.r.t. $v_\pi$</p>
+
+<p>$$\pi'(s) = \arg\max_a \sum_{s'} p(s'|s,a)[r(s,a,s') + \gamma v_\pi(s')]$$</p>
+
+<p>The policy improvement theorem guarantees that $v_{\pi'}(s) \geq v_\pi(s)$ for all states.</p>
+
+<p><strong>Algorithm:</strong></p>
+<p>1. Initialize policy $\pi$ arbitrarily</p>
+<p>2. Repeat:</p>
+<p>   - <strong>Policy Evaluation</strong>: Compute $V = v_\pi$</p>
+<p>   - <strong>Policy Improvement</strong>:</p>
+<p>     - $\text{policy-stable} \leftarrow \text{true}$</p>
+<p>     - For each state $s$:</p>
+<p>       - $\text{old-action} \leftarrow \pi(s)$</p>
+<p>       - $\pi(s) \leftarrow \arg\max_a \sum_{s'} p(s'|s,a)[r + \gamma V(s')]$</p>
+<p>       - If $\text{old-action} \neq \pi(s)$, $\text{policy-stable} \leftarrow \text{false}$</p>
+<p>   - If policy-stable, stop</p>
+
+            <div class="code-block">
+                <pre><code class="language-python">def policy_evaluation(env, policy, theta=1e-6, max_iterations=1000):
+    &quot;&quot;&quot;
+    Evaluate a policy using iterative policy evaluation.
+    
+    Args:
+        env: GridWorld environment
+        policy: array of shape (n_states, n_actions) representing policy probabilities
+        theta: convergence threshold
+        max_iterations: maximum number of iterations
+    
+    Returns:
+        V: state-value function
+        iterations: number of iterations until convergence
+    &quot;&quot;&quot;
+    V = np.zeros(env.n_states)
+    
+    for iteration in range(max_iterations):
+        delta = 0
+        
+        # Update value for each state
+        for state_idx, state in enumerate(env.states):
+            if env.is_terminal(state):
+                continue
+            
+            v = V[state_idx]
+            new_v = 0
+            
+            # Sum over all actions weighted by policy
+            for action_idx in range(env.n_actions):
+                next_state = env.get_next_state(state, action_idx)
+                next_state_idx = env.state_to_idx[next_state]
+                reward = env.get_reward(state, action_idx, next_state)
+                
+                # Bellman update
+                new_v += policy[state_idx, action_idx] * (reward + env.gamma * V[next_state_idx])
+            
+            V[state_idx] = new_v
+            delta = max(delta, abs(v - new_v))
+        
+        if delta &lt; theta:
+            print(f&quot;Policy evaluation converged in {iteration + 1} iterations&quot;)
+            return V, iteration + 1
+    
+    print(f&quot;Policy evaluation reached max iterations ({max_iterations})&quot;)
+    return V, max_iterations
+
+# Create a uniform random policy
+uniform_policy = np.ones((env.n_states, env.n_actions)) / env.n_actions
+
+# Evaluate the uniform policy
+V_uniform, iterations = policy_evaluation(env, uniform_policy)
+
+print(f&quot;\nValue function for uniform random policy:&quot;)
+print(f&quot;Converged in {iterations} iterations&quot;)</code></pre>
+            </div>
+
+            <h2>Policy Evaluation</h2>
+
+<p><strong>Policy evaluation</strong> computes the state-value function $v_\pi$ for a given policy $\pi$. It iteratively applies the Bellman equation:</p>
+
+<p>$$v_{k+1}(s) = \sum_a \pi(a|s) \sum_{s'} p(s'|s,a)[r(s,a,s') + \gamma v_k(s')]$$</p>
+
+<p>This is guaranteed to converge to $v_\pi$ as $k \to \infty$.</p>
+
+<p><strong>Algorithm:</strong></p>
+<p>1. Initialize $V(s) = 0$ for all states</p>
+<p>2. Repeat until convergence:</p>
+<p>   - For each state $s$:</p>
+<p>     - $v \leftarrow V(s)$</p>
+<p>     - $V(s) \leftarrow \sum_a \pi(a|s) \sum_{s'} p(s'|s,a)[r + \gamma V(s')]$</p>
+<p>     - $\Delta \leftarrow \max(\Delta, |v - V(s)|)$</p>
+<p>   - If $\Delta < \theta$, stop</p>
+
             <h2>GridWorld Environment</h2>
 
 <p>We'll implement a classic GridWorld environment where:</p>
