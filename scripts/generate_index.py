@@ -68,6 +68,7 @@ def generate_index_html(notebooks_info):
 
         <nav>
             <a href="#about">about</a>
+            <a href="#news">news</a>
             <a href="#notebooks">notebooks</a>
             <a href="https://github.com/Prasoon1207/chapter2code" target="_blank">github</a>
         </nav>
@@ -75,8 +76,18 @@ def generate_index_html(notebooks_info):
         <section id="about">
             <h2>about</h2>
             <p>
-                The purpose of this blog is to document my learning journey through some scientific topics I find interesting. Here, I share research notes, code implementations, and insights gained from studying various concepts in depth.
+                The <a href="https://scholar.google.com/citations?user=NmHOvbIAAAAJ&hl=en">author</a> is an AI Resident at Google DeepMind, working on enhancing Gemini's cross-lingual and cross-modal transfer capabilities. His research focuses on multilingual learning and post-training. This blog documents his learning journey through short, accessible code-annotated articles on foundational concepts, written whenever time allows alongside full-time research, football and rock climbing (in that order :p).
             </p>
+        </section>
+
+        <section id="news">
+            <h2>news</h2>
+            <ul class="news-list">
+                <li><strong>September 2025:</strong> Co-led a project that won 1st place internationally in GDM's annual research hackathon.</li>
+                <li><strong>September 2025:</strong> Collaborated on a project (with London's AlphaProof team)that won 2nd place internationally in GDM's annual research hackathon.</li>
+                <li><strong>October 2025:</strong> Delivered a tutorial on DDPMs at DeepMind India's Textbook Reading Group.</li>
+                <li><strong>July 2025:</strong> Joined Google DeepMind as an AI Resident (Pre-Doctoral Researcher) in the NLU team under Dr. Partha Talukdar.</li>
+            </ul>
         </section>
 
         <section id="notebooks">
