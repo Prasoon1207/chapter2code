@@ -13,6 +13,11 @@ def get_notebook_metadata(notebook_path):
     # Get title from first markdown cell with # header
     title = notebook_path.stem.replace('_', ' ').title()
     description = ""
+    tags = []
+    
+    # Extract tags from notebook metadata if available
+    if 'metadata' in notebook and 'tags' in notebook['metadata']:
+        tags = notebook['metadata']['tags']
     
     for cell in notebook['cells']:
         if cell['cell_type'] == 'markdown':
@@ -45,7 +50,7 @@ def get_notebook_metadata(notebook_path):
         'title': title,
         'description': description,
         'filename': notebook_path.stem,
-        'tags': []  # Could be extracted from notebook metadata
+        'tags': tags
     }
 
 def generate_index_html(notebooks_info):
@@ -89,12 +94,20 @@ def generate_index_html(notebooks_info):
         # Create a simple description if none found
         desc = nb['description'] if nb['description'] else f"Exploring {nb['title'].lower()}."
         
+        # Generate tags HTML
+        tags_html = ""
+        if nb['tags']:
+            tags_html = '<div class="tags">\n'
+            for tag in nb['tags']:
+                tags_html += f'                    <span class="tag">{tag}</span>\n'
+            tags_html += '                </div>\n'
+        
         html += f"""            <article class="notebook-entry">
                 <h3>
                     <a href="posts/{nb['filename']}.html">{nb['title'].lower()}</a>
                 </h3>
                 <div class="meta">november 2025</div>
-                <p>
+                {tags_html}                <p>
                     {desc}
                 </p>
             </article>
